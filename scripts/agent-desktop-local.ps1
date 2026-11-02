@@ -1,9 +1,5 @@
 # agent-desktop Windows Runner Bridge
 # Allows running agent-desktop on Windows both from interactive terminals and sandboxed runner environments.
-param(
-    [Parameter(ValueFromRemainingArguments = $true)]
-    [string[]]$CliArgs
-)
 
 $bin = "$env:APPDATA\npm\node_modules\agent-desktop\bin\agent-desktop-win32-x64.exe"
 if (-not (Test-Path $bin)) {
@@ -11,7 +7,7 @@ if (-not (Test-Path $bin)) {
     exit 1
 }
 
-$arguments = ($CliArgs -join ' ')
+$arguments = ($args -join ' ')
 
 $bridgeCode = @'
 using System;
