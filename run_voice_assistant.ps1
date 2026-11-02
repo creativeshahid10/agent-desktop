@@ -1,8 +1,9 @@
-# Run agent-desktop Voice Assistant
+# Run Jam Desktop Voice Assistant
 Write-Host "========================================================" -ForegroundColor Cyan
-Write-Host "       agent-desktop Free Voice Assistant (Hinglish)    " -ForegroundColor Green
+Write-Host "               JAM - Desktop AI Voice Agent             " -ForegroundColor Green
 Write-Host "========================================================" -ForegroundColor Cyan
-Write-Host "Speak into your mic: 'Open Chrome', 'List Windows', 'Snapshot Notepad'" -ForegroundColor Yellow
-Write-Host "Press Ctrl+C to stop.`n"
+Write-Host "Jam is running silently in STANDBY mode." -ForegroundColor Yellow
+Write-Host "Wake word: 'Jam', 'Hey Jam', or 'Jam, <command>'" -ForegroundColor Yellow
+Write-Host "Background chatter will be ignored silently.`n" -ForegroundColor DarkGray
 
 & "$PSScriptRoot\.venv\Scripts\python.exe" "$PSScriptRoot\scripts\voice_assistant.py" $args
