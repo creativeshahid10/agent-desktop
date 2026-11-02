@@ -7,7 +7,14 @@ if (-not (Test-Path $bin)) {
     exit 1
 }
 
-$arguments = ($args -join ' ')
+$quotedArgs = $args | ForEach-Object {
+    if ($_ -match '\s' -and -not ($_ -match '^".*"$')) {
+        "`"$_`""
+    } else {
+        $_
+    }
+}
+$arguments = $quotedArgs -join ' '
 
 $bridgeCode = @'
 using System;
