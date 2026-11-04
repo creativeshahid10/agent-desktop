@@ -1,0 +1,9 @@
+{
+  "voice_gender": "female",
+  "user_name": "Shahid",
+  "honorific": "Sir",
+  "accent": "delhi-in",
+  "wake_sound": true,
+  "energy_threshold": 300,
+  "dynamic_energy_threshold": false
+}

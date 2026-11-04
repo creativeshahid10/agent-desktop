@@ -1,8 +1,8 @@
 """
-Jam - Free Voice AI Agent for agent-desktop
-Named 'Jam': Listens silently until wake-word 'Jam' is spoken, ignores background/unrelated speech,
-and executes desktop actions (Photoshop, Chrome, Notepad, menus, web navigation, typing) via agent-desktop.
-100% Free & Local: Uses SpeechRecognition + Windows SAPI (pyttsx3) + agent-desktop.
+Jam - Free Voice AI Agent for agent-desktop (v2.0)
+Named 'Jam': High-sensitivity wake-word in background noise, Delhi Indian Accent (Sweet Female / Male),
+persisted voice switching, crystal-clear 'Shahid Sir' pronunciation, and full desktop automation.
+100% Free: Uses SpeechRecognition + gTTS (Indian Neural Voice) + agent-desktop + Pyttsx3.
 """
 
 import sys
@@ -25,31 +25,15 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-# Initialize TTS Engine (Windows Native SAPI - 100% Free, Offline, 0ms Lag)
-tts_engine = None
-try:
-    import pyttsx3
-    tts_engine = pyttsx3.init()
-    tts_engine.setProperty('rate', 190)
-    tts_engine.setProperty('volume', 0.95)
-    voices = tts_engine.getProperty('voices')
-    for v in voices:
-        if "zira" in v.name.lower():
-            tts_engine.setProperty('voice', v.id)
-            break
-except Exception as e:
-    print(f"[Notice] pyttsx3 not initialized: {e}")
-
-def speak(text: str, wait: bool = True):
-    """Speak text aloud using native Windows voice and print to console."""
-    print(f"\n🎙️  Jam: {text}")
-    if tts_engine:
-        try:
-            tts_engine.say(text)
-            if wait:
-                tts_engine.runAndWait()
-        except Exception:
-            pass
+# Import Jam TTS Engine
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+from jam_tts import (
+    speak,
+    play_wake_chime,
+    set_voice_gender,
+    get_voice_gender,
+    load_config
+)
 
 def run_desktop_cmd(args: list[str]) -> dict:
     """Run agent-desktop command via local bridge script and return parsed JSON."""
@@ -273,7 +257,7 @@ def click_element_by_name(target_name: str, app_filter: str | None = None) -> bo
 
 def multi_step_menu(step1: str, step2: str) -> bool:
     """Execute a 2-step menu sequence like File -> New."""
-    speak(f"{step1} kholkar {step2} par click kar raha hoon...")
+    speak(f"Ji Shahid Sir, {step1} kholkar {step2} par click kar rahi hoon...")
     ok1 = click_element_by_name(step1)
     time.sleep(0.4)
     ok2 = click_element_by_name(step2)
@@ -313,24 +297,41 @@ class JamAgent:
 
 jam = JamAgent()
 
-# Wake word regex pattern (catches "Jam", "Hey Jam", "Suno Jam", "Ok Jam", and phonetic "Gem/Jaam")
-WAKE_PATTERN = r'\b(?:hey\s+|suno\s+|ok\s+|oye\s+|hello\s+)?(?:jam|gem|jaam)\b'
+# Ultra-resilient wake-word pattern (catches "Hey Jam", "Jam", and all noisy acoustic variations)
+WAKE_PATTERN = r'\b(?:hey|suno|ok|oye|hello|ay|a)?\s*(?:jam|gem|gym|jan|jaam|jham|cham|exam|chem|john)\b'
 
 def execute_desktop_action(command: str) -> bool:
     """Execute parsed action after wake word or in active conversational window."""
     clean = command.strip().lower()
 
-    # 1. Exit / Standby / Dismiss
+    # Voice Switch Commands (Male / Female)
+    if re.search(r'\b(ladki\s*ki\s*voice|female\s*voice|ladki\s*ki\s*awaaz|female\s*awaaz)\b', clean):
+        set_voice_gender("female")
+        jam.activate()
+        return True
+
+    if re.search(r'\b(ladke\s*ki\s*voice|male\s*voice|ladke\s*ki\s*awaaz|male\s*awaaz)\b', clean):
+        set_voice_gender("male")
+        jam.activate()
+        return True
+
+    if re.search(r'\b(voice\s*change|change\s*voice|awaaz\s*badlo|awaaz\s*change)\b', clean):
+        new_g = "male" if get_voice_gender() == "female" else "female"
+        set_voice_gender(new_g)
+        jam.activate()
+        return True
+
+    # Standby / Dismissal
     if re.search(r'\b(standby|chup\s*ho\s*jao|chup|baad\s*me|theek\s*hai\s*thanks|bas\s*ho\s*gaya|bas)\b', clean):
-        speak("Ji Shahid, Jam standby par jaa raha hai.")
+        speak("Ji Shahid Sir, Jam standby par jaa rahi hai.", cache_key="standby_female")
         jam.deactivate()
         return True
 
     if re.search(r'\b(exit|quit|bye|band\s*ho\s*jao)\b', clean):
-        speak("Alvida Shahid! Jam shut down ho raha hai.")
+        speak("Alvida Shahid Sir! Jam shut down ho rahi hai.")
         return False
 
-    # 2. Multi-step Menu Action (e.g. "File mein jaake New pe click karo")
+    # Multi-step Menu Action (e.g. "File mein jaake New pe click karo")
     m_multi = re.search(r'([a-z0-9]+)\s+(?:me|mein|par|pe)\s+(?:jaake|jaakar|kholkar|open\s*karke)?\s*([a-z0-9]+)\s+(?:pe|par|me|mein)?\s*click', clean)
     if m_multi:
         s1 = m_multi.group(1).replace("menu", "").strip()
@@ -338,121 +339,120 @@ def execute_desktop_action(command: str) -> bool:
         if s1 and s2 and s1 != s2:
             ok = multi_step_menu(s1, s2)
             if ok:
-                speak(f"{s1} me {s2} successfully execute kar diya!")
+                speak(f"Ji Shahid Sir, {s1} me {s2} successfully execute ho gaya!")
             else:
-                speak(f"{s1} me {s2} execute karne me dikkat aayi.")
+                speak(f"Shahid Sir, {s1} me {s2} execute karne me dikkat aayi.")
             jam.activate()
             return True
 
-    # 3. Close Application or Window (e.g. "close Photoshop" / "Photoshop band karo")
+    # Close Application or Window (e.g. "close Photoshop" / "Photoshop band karo")
     m_close = re.search(r'^(?:close|quit|band\s*karo|band\s*kar\s*do|exit)\s+([a-z0-9\s\.]+)', clean) or \
               re.search(r'([a-z0-9\s\.]+)\s+(?:close\s*karo|band\s*karo|quit\s*karo|band\s*kar\s*do)', clean)
     if m_close:
         target = (m_close.group(1) or m_close.group(2)).strip()
         if target and target not in ["karo", "do", "karna"]:
-            speak(f"{target.capitalize()} close kar raha hoon...")
+            speak(f"Ji Shahid Sir, {target.capitalize()} close kar rahi hoon...")
             ok = close_target(target)
             if ok:
-                speak(f"{target.capitalize()} band kar diya gaya hai.")
+                speak(f"Shahid Sir, {target.capitalize()} band kar diya gaya hai.")
             else:
-                speak(f"{target.capitalize()} ko close nahi kiya ja saka.")
+                speak(f"Shahid Sir, {target.capitalize()} ko close nahi kiya ja saka.")
             jam.activate()
             return True
 
-    # 4. Open Website or Launch App (e.g. "open ChatGPT" / "browser khole ChatGPT open kare")
+    # Open Website or Launch App (e.g. "open ChatGPT" / "browser khole ChatGPT open kare")
     m_open = re.search(r'^(?:open|launch|start|kholo|chalao|khole)\s+(?:website\s+)?([a-z0-9\s\.]+)', clean) or \
              re.search(r'([a-z0-9\s\.]+)\s+(?:kholo|open\s*karo|launch\s*karo|chalao)', clean) or \
              re.search(r'(?:browser\s*khole\s+)?([a-z0-9\s\.]+)\s+website\s+open\s*kare', clean)
     if m_open:
         target = (m_open.group(1) if m_open.lastindex else m_open.group(0)).replace("website", "").replace("browser", "").replace("khole", "").replace("ko", "").strip()
         if target and target not in ["windows", "apps", "menu", "file"]:
-            speak(f"{target.capitalize()} open kar raha hoon...")
+            speak(f"Ji Shahid Sir, {target.capitalize()} open kar rahi hoon...")
             ok = launch_target(target)
             if ok:
-                speak(f"{target.capitalize()} successfully start ho gaya!")
+                speak(f"Shahid Sir, {target.capitalize()} successfully start ho gaya hai!")
             else:
-                speak(f"{target.capitalize()} start nahi ho paya.")
+                speak(f"Shahid Sir, {target.capitalize()} start nahi ho paya.")
             jam.activate()
             return True
 
-    # 5. Click on Specific Element / Menu (e.g. "File mein click karo" / "Click New")
+    # Click on Specific Element / Menu (e.g. "File mein click karo" / "Click New")
     m_click_pre = re.search(r'^(?:click\s*(?:on|in)?)\s+([a-z0-9\s]+)', clean)
     m_click_suf = re.search(r'([a-z0-9\s]+?)\s*(?:menu|button)?\s*(?:me|mein|par|pe)\s+click', clean)
     if m_click_pre or m_click_suf:
         elem_name = (m_click_pre.group(1) if m_click_pre else m_click_suf.group(1)).replace("menu", "").replace("button", "").strip()
         if elem_name and elem_name not in ["karo", "par", "pe"]:
-            speak(f"{elem_name.capitalize()} par click kar raha hoon...")
+            speak(f"Ji Shahid Sir, {elem_name.capitalize()} par click kar rahi hoon...")
             ok = click_element_by_name(elem_name)
             if ok:
-                speak(f"{elem_name.capitalize()} par click ho gaya!")
+                speak(f"Shahid Sir, {elem_name.capitalize()} par click ho gaya!")
             else:
-                speak(f"{elem_name.capitalize()} par click perform kar diya hai.")
+                speak(f"Shahid Sir, {elem_name.capitalize()} par click perform kar diya hai.")
             jam.activate()
             return True
 
-    # 6. Type Text & Search (e.g. "type Hello world" / "search karo YouTube lofi")
+    # Type Text & Search (e.g. "type Hello world" / "search karo YouTube lofi")
     type_match = re.search(r'(?:type\s*karo|type|likho|write)\s*[:\s]+(.*)', clean) or \
                  re.search(r'search\s*karo\s*[:\s]+(.*)', clean) or \
                  re.search(r'(?:address|prompt)\s*type\s*kare\s*[:\s]+(.*)', clean)
     if type_match:
         text_to_type = type_match.group(1).strip()
         is_search = "search" in clean
-        speak(f"Text type kar raha hoon...")
+        speak(f"Ji Shahid Sir, text type kar rahi hoon...")
         type_text(text_to_type, submit=is_search)
         if is_search:
-            speak("Search query submit kar di hai!")
+            speak("Shahid Sir, search query submit kar di hai!")
         else:
-            speak("Text type kar diya hai!")
+            speak("Shahid Sir, text type kar diya hai!")
         jam.activate()
         return True
 
-    # 7. Press Keys (Enter, Save, Undo)
+    # Press Keys (Enter, Save, Undo)
     if "enter" in clean or "submit" in clean:
-        speak("Enter press kar raha hoon...")
+        speak("Ji Shahid Sir, Enter press kar rahi hoon...")
         run_desktop_cmd(["press", "return"])
         jam.activate()
         return True
     if "save" in clean or "save karo" in clean:
-        speak("Document save kar raha hoon...")
+        speak("Ji Shahid Sir, document save kar rahi hoon...")
         run_desktop_cmd(["press", "ctrl+s"])
         jam.activate()
         return True
     if "undo" in clean or "undo karo" in clean:
-        speak("Undo action perform kar raha hoon...")
+        speak("Ji Shahid Sir, undo action perform kar rahi hoon...")
         run_desktop_cmd(["press", "ctrl+z"])
         jam.activate()
         return True
 
-    # 8. List Running Apps & Windows
+    # List Running Apps & Windows
     if re.search(r'\b(list apps|active apps|kaunse apps|running apps|apps dikhao)\b', clean):
-        speak("Active applications check kar raha hoon...")
+        speak("Ji Shahid Sir, active applications check kar rahi hoon...")
         data = run_desktop_cmd(["list-apps"])
         if data.get("ok"):
             apps = [a.get("name") for a in data.get("data", {}).get("apps", [])]
             app_str = ", ".join(apps) if apps else "Koi foreground app nahi mila."
-            speak(f"Active applications hain: {app_str}")
+            speak(f"Shahid Sir, active applications hain: {app_str}")
         jam.activate()
         return True
 
     if re.search(r'\b(list windows|windows dikhao|open windows|saare windows)\b', clean):
-        speak("Open windows check kar raha hoon...")
+        speak("Ji Shahid Sir, open windows check kar rahi hoon...")
         data = run_desktop_cmd(["list-windows"])
         if data.get("ok"):
             windows = data.get("data", [])
             titles = [w.get("title") for w in windows if w.get("title")]
             summary = ", ".join(titles[:4]) if titles else "Koi active window nahi mila."
-            speak(f"{len(windows)} windows open hain: {summary}")
+            speak(f"Shahid Sir, {len(windows)} windows open hain: {summary}")
         jam.activate()
         return True
 
-    # If in active window but not a recognizable desktop command, ignore quietly (avoids interrupting conversations)
     print(f"[*] (Jam active window) Ignored non-command talk: \"{command}\"")
     return True
 
 def handle_incoming_speech(raw_text: str) -> bool:
     """
-    Filters speech: Only activates on wake-word 'Jam' or during active conversational window.
-    Silently ignores background talk or unrelated chatter.
+    Filters speech: Only activates on wake-word 'Hey Jam' / 'Jam' or during active follow-up window.
+    Silently ignores background chatter.
     """
     text = raw_text.strip()
     if not text:
@@ -462,22 +462,23 @@ def handle_incoming_speech(raw_text: str) -> bool:
     wake_match = re.search(WAKE_PATTERN, clean)
 
     if wake_match:
-        # User called 'Jam'!
+        # User called 'Jam'! Play crisp pleasant chime instantly!
+        play_wake_chime()
         jam.activate()
+
         # Extract command after removing wake word
         cmd_after_wake = re.sub(WAKE_PATTERN, '', text, flags=re.I).strip(" ,.!\t")
         print(f"\n⚡ [Jam Activated] Heard: \"{text}\"")
 
         # If user ONLY said "Jam" or "Hey Jam"
         if not cmd_after_wake or len(cmd_after_wake) <= 1:
-            speak("Ji Shahid, Jam sun raha hai. Boliye kya kaam karna hai?")
+            speak("Ji Shahid Sir, Jam sun rahi hai. Boliye kya kaam karna hai?", cache_key="wake_female")
             return True
 
-        # User gave command along with wake word (e.g. "Jam, Photoshop open karo")
+        # User gave command along with wake word (e.g. "Hey Jam, Photoshop open karo")
         return execute_desktop_action(cmd_after_wake)
 
     elif jam.is_in_active_window():
-        # User is in active follow-up window (within 14s of previous command)
         print(f"\n💬 [Jam Follow-up Window] Heard: \"{text}\"")
         return execute_desktop_action(text)
 
@@ -487,18 +488,29 @@ def handle_incoming_speech(raw_text: str) -> bool:
         return True
 
 def start_voice_loop():
-    """Start continuous microphone listening loop with silent standby."""
+    """Start continuous microphone listening loop with calibrated noise sensitivity."""
     import speech_recognition as sr
     r = sr.Recognizer()
-    r.energy_threshold = 300
-    r.dynamic_energy_threshold = True
 
-    speak("Namaste Shahid! Main Jam hoon. Main standby par hoon, jab bhi zaroorat ho bas boliye 'Jam'.")
-    print("\n[Jam is listening silently in STANDBY mode... (Say 'Jam' to wake)]")
+    # Noise-resilient settings:
+    # 1. Fixed sensitive threshold so background noise doesn't make it deaf
+    r.energy_threshold = 280
+    r.dynamic_energy_threshold = False
+    # 2. Faster responsiveness on pauses
+    r.pause_threshold = 0.5
+    r.non_speaking_duration = 0.3
+
+    speak("Namaste Shahid Sir! Main Jam hoon. Main standby par hoon, jab bhi zaroorat ho bas kahiye 'Hey Jam'.", cache_key="greeting_female")
+    print("\n[Jam is listening in STANDBY mode... Say 'Hey Jam' to wake]")
 
     try:
         with sr.Microphone() as source:
-            r.adjust_for_ambient_noise(source, duration=0.8)
+            # Calibrate briefly (0.4s) and cap threshold to avoid deafness
+            r.adjust_for_ambient_noise(source, duration=0.4)
+            if r.energy_threshold > 350:
+                r.energy_threshold = 300
+            print(f"[*] Calibrated mic energy threshold: {r.energy_threshold}")
+
             while True:
                 try:
                     audio = r.listen(source, timeout=6, phrase_time_limit=8)
@@ -514,14 +526,14 @@ def start_voice_loop():
                 except sr.WaitTimeoutError:
                     continue
     except KeyboardInterrupt:
-        speak("Jam shut down ho raha hai. Have a great day!")
+        speak("Jam shut down ho rahi hai Shahid Sir. Have a great day!")
     except Exception as e:
         print(f"\n[Microphone Error: {e}]")
-        speak("Microphone me dikkat aayi. Aap text mode use kar sakte hain.")
+        speak("Microphone me dikkat aayi Shahid Sir. Aap text mode use kar sakte hain.")
 
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--text":
-        speak("Jam Text Mode active. Type commands starting with 'Jam' or type 'exit' to quit.")
+        speak("Jam Text Mode active Shahid Sir. Type commands starting with 'Hey Jam' or type 'exit' to quit.")
         while True:
             try:
                 line = input("\n📝 Enter text: ").strip()

@@ -93,3 +93,7 @@ npm/bin/.launcher-notice-*
 .venv/
 __pycache__/
 *.pyc
+
+# Voice audio cache
+.cache_audio/
+*.mp3
